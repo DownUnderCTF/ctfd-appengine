@@ -1,0 +1,33 @@
+runtime: custom
+env: flex
+
+env_variables:
+  SECRET_KEY: "[redacted]"
+  DATABASE_URL: "mysql+pymysql://root:[redacted]@redacted.mysql.host/ctfd"
+  REDIS_URL: "redis://redacted.redis.host:6379"
+  REVERSE_PROXY: "2,0,0,0,0"
+  MAILFROM_ADDR: "noreply@downunderctf.com"
+  MAIL_SERVER: "email-smtp.ap-southeast-2.amazonaws.com"
+  MAIL_PORT: "587"
+  MAIL_TLS: "True"
+  MAIL_USEAUTH: "True"
+  MAIL_USERNAME: "[redacted]"
+  MAIL_PASSWORD: "[redacted]"
+  UPLOAD_PROVIDER: "s3"
+  AWS_ACCESS_KEY_ID: "[redacted]"
+  AWS_SECRET_ACCESS_KEY: "[redacted]"
+  AWS_S3_BUCKET: "files.duc.tf"
+  AWS_S3_ENDPOINT_URL: "https://storage.googleapis.com"
+  WORKERS: 2
+
+network:
+  name: default
+
+resources:
+  cpu: 2
+  memory_gb: 4
+  disk_size_gb: 10
+
+automatic_scaling:
+  cpu_utilization: 
+    target_utilization: 0.7
