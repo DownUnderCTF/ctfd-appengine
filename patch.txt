@@ -1,0 +1,109 @@
+diff -ruN original/CTFd/auth.py changes/CTFd/auth.py
+--- original/CTFd/auth.py	2020-09-21 16:54:17.222000000 +1000
++++ changes/CTFd/auth.py	2020-09-21 16:55:45.494000000 +1000
+@@ -38,7 +38,7 @@
+     # User is confirming email account
+     if data and request.method == "GET":
+         try:
+-            user_email = unserialize(data, max_age=1800)
++            user_email = unserialize(data, max_age=3600)
+         except (BadTimeSignature, SignatureExpired):
+             return render_template(
+                 "confirm.html", errors=["Your confirmation link has expired"]
+@@ -106,7 +106,7 @@
+ 
+     if data is not None:
+         try:
+-            email_address = unserialize(data, max_age=1800)
++            email_address = unserialize(data, max_age=3600)
+         except (BadTimeSignature, SignatureExpired):
+             return render_template(
+                 "reset_password.html", errors=["Your link has expired"]
+diff -ruN original/CTFd/config.ini changes/CTFd/config.ini
+--- original/CTFd/config.ini	2020-09-21 16:54:24.370000000 +1000
++++ changes/CTFd/config.ini	2020-09-21 16:55:57.032000000 +1000
+@@ -106,7 +106,7 @@
+ # UPLOAD_PROVIDER
+ # Specifies the service that CTFd should use to store files.
+ # Can be set to filesystem or s3
+-UPLOAD_PROVIDER = filesystem
++UPLOAD_PROVIDER =
+ 
+ # UPLOAD_FOLDER
+ # The location where files are uploaded under the filesystem uploader.
+diff -ruN original/CTFd/utils/uploads/uploaders.py changes/CTFd/utils/uploads/uploaders.py
+--- original/CTFd/utils/uploads/uploaders.py	2020-09-21 16:54:20.606000000 +1000
++++ changes/CTFd/utils/uploads/uploaders.py	2020-09-21 16:55:52.357000000 +1000
+@@ -1,6 +1,7 @@
+ import os
+ import posixpath
+ import string
++import re
+ from shutil import copyfileobj
+ 
+ import boto3
+@@ -75,18 +76,18 @@
+ class S3Uploader(BaseUploader):
+     def __init__(self):
+         super(BaseUploader, self).__init__()
++        self.endpoint = get_app_config("AWS_S3_ENDPOINT_URL")
+         self.s3 = self._get_s3_connection()
+         self.bucket = get_app_config("AWS_S3_BUCKET")
+ 
+     def _get_s3_connection(self):
+         access_key = get_app_config("AWS_ACCESS_KEY_ID")
+         secret_key = get_app_config("AWS_SECRET_ACCESS_KEY")
+-        endpoint = get_app_config("AWS_S3_ENDPOINT_URL")
+         client = boto3.client(
+             "s3",
+             aws_access_key_id=access_key,
+             aws_secret_access_key=secret_key,
+-            endpoint_url=endpoint,
++            endpoint_url=self.endpoint,
+         )
+         return client
+ 
+@@ -114,16 +115,10 @@
+ 
+     def download(self, filename):
+         key = filename
+-        filename = filename.split("/").pop()
+-        url = self.s3.generate_presigned_url(
+-            "get_object",
+-            Params={
+-                "Bucket": self.bucket,
+-                "Key": key,
+-                "ResponseContentDisposition": "attachment; filename={}".format(
+-                    filename
+-                ),
+-            },
++        url = re.sub(
++            r"([^:])(/{2,})",
++            r"\1/",
++            "{}/{}/{}".format(self.endpoint, self.bucket, filename)
+         )
+         return redirect(url)
+ 
+diff -ruN original/docker-entrypoint.sh changes/docker-entrypoint.sh
+--- original/docker-entrypoint.sh	2020-09-21 16:42:59.697455806 +1000
++++ changes/docker-entrypoint.sh	2020-09-21 16:55:19.307000000 +1000
+@@ -5,6 +5,8 @@
+ WORKER_CLASS=${WORKER_CLASS:-gevent}
+ ACCESS_LOG=${ACCESS_LOG:--}
+ ERROR_LOG=${ERROR_LOG:--}
++WORKER_TIMEOUT=${WORKER_TIMEOUT:-60}
++WORKER_PORT=${WORKER_PORT:-8000}
+ WORKER_TEMP_DIR=${WORKER_TEMP_DIR:-/dev/shm}
+ SECRET_KEY=${SECRET_KEY:-}
+ DATABASE_URL=${DATABASE_URL:-}
+@@ -42,8 +44,9 @@
+ # Start CTFd
+ echo "Starting CTFd"
+ exec gunicorn 'CTFd:create_app()' \
+-    --bind '0.0.0.0:8000' \
++    --bind "0.0.0.0:$WORKER_PORT" \
+     --workers $WORKERS \
++    --timeout $WORKER_TIMEOUT \
+     --worker-tmp-dir "$WORKER_TEMP_DIR" \
+     --worker-class "$WORKER_CLASS" \
+     --access-logfile "$ACCESS_LOG" \

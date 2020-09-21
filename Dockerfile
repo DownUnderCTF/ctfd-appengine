@@ -1,9 +1,8 @@
 FROM ctfd/ctfd
 
-COPY ./uploaders.py /opt/CTFd/CTFd/utils/uploads/uploaders.py
-COPY ./auth.py /opt/CTFd/CTFd/auth.py
-COPY ./config.ini /opt/CTFd/CTFd/config.ini
-COPY ./favicon.ico /opt/CTFd/CTFd/themes/core/static/img/favicon.ico
-COPY ./docker-entrypoint.sh /opt/CTFd/docker-entrypoint.sh
+# apply patches
+WORKDIR /opt/CTFd
+COPY ./patch.txt /opt/CTFd/patch.txt
+RUN patch -s -p1 < patch.txt
 
-RUN chmod +x /opt/CTFd/docker-entrypoint.sh
+COPY ./favicon.ico /opt/CTFd/CTFd/themes/core/static/img/favicon.ico
