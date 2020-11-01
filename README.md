@@ -5,7 +5,11 @@ CTFd on appengine flex setup so that you can get the sp00dy autoscaling.
 1. Create a memorystore and cloud sql instances on google cloud and set up the connection information into the env vars
 2. Create an account with an email provider such as mailgun or amazon ses, and set the details into the env vars
 3. Make sure memorystore and cloudsql are on the same VPC, and change the setting under network.name to your VPC
-4. Run the below command
+4. Set up the Google Cloud Storage bucket for hosting the challenge files. You need to first enable Interoperability
+mode in order to get the S3 compatible key.
+    - Make sure the permissions for the bucket are also public. Grant `Storage Legacy Object Reader` to `allUsers` on
+      the bucket settings page.
+6. Run the below command
 
 ```sh
 gcloud app deploy
